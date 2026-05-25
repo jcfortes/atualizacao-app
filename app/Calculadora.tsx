@@ -172,6 +172,40 @@ export function Calculadora() {
         >
           {loading ? 'Calculando...' : 'Calcular correção →'}
         </button>
+
+        {/* Série histórica do indexador */}
+        {resultado && (
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <p className="text-sm font-bold text-gray-700">Série histórica — {indice}</p>
+              <span className="text-xs text-gray-400">{resultado.periodos} meses</span>
+            </div>
+            <div className="overflow-auto max-h-56">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0">
+                  <tr className="bg-gray-900 text-white">
+                    <th className="px-4 py-2 text-left font-semibold">Mês</th>
+                    <th className="px-4 py-2 text-right font-semibold">Taxa (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resultado.dados.map((d, i) => {
+                    const taxa = parseFloat(d.valor.replace(',', '.'))
+                    const isPos = taxa >= 0
+                    return (
+                      <tr key={i} className={`border-t border-gray-50 hover:bg-emerald-50/40 transition-colors ${i % 2 === 1 ? 'bg-gray-50/60' : ''}`}>
+                        <td className="px-4 py-2 text-gray-700">{d.data}</td>
+                        <td className={`px-4 py-2 text-right font-mono font-semibold ${isPos ? 'text-emerald-700' : 'text-red-600'}`}>
+                          {taxa.toFixed(4).replace('.', ',')}%
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Resultado */}
