@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "Atualização Monetária — Matemático.com.br",
   description: "Atualize valores pela inflação com IPCA, IGPM, INPC e CDI. Calcule correções monetárias com precisão.",
   keywords: ["atualização monetária", "IPCA", "IGPM", "correção monetária", "inflação"],
-  icons: { icon: "/favicon.ico", shortcut: "/favicon.ico" },
+  icons: { icon: "/icon.svg", shortcut: "/icon.svg" },
   openGraph: {
     title: "Atualização Monetária — Matemático.com.br",
     description: "Corrija valores pela inflação com precisão.",
