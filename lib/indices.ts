@@ -29,13 +29,16 @@ export interface DadoBCB {
 export async function buscarIndice(
   indice: Indice,
   dataInicio: string,
-  dataFim: string
+  dataFim: string,
+  cache: RequestCache = 'no-store'
 ): Promise<DadoBCB[]> {
   const codigo = SERIES[indice]
   const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${codigo}/dados?formato=json&dataInicial=${dataInicio}&dataFinal=${dataFim}`
-  const res = await fetch(url, { next: { revalidate: 3600 } })
+  const res = await fetch(url, { cache })
   if (!res.ok) throw new Error(`Erro ao buscar ${indice}: ${res.status}`)
-  return res.json()
+  const data = await res.json()
+  if (!Array.isArray(data)) throw new Error(`Resposta inválida para ${indice}`)
+  return data
 }
 
 // Calcula fator de correção a partir de uma lista de taxas mensais (em %)
