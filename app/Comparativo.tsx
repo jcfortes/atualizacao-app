@@ -179,7 +179,7 @@ export function Comparativo() {
                     <p className="text-xs text-gray-400 mt-2">{r.erro}</p>
                   ) : (
                     <>
-                      <p className={`text-2xl font-black mt-1 ${cor.texto}`}>{moeda(r.valorCorrigido!)}</p>
+                      <p className={`text-lg font-black mt-1 leading-tight ${cor.texto}`}>{moeda(r.valorCorrigido!)}</p>
                       <p className="text-xs text-gray-600 leading-relaxed">
                         Variação: <span className="font-bold">{pct(r.variacao!)}</span>
                       </p>
