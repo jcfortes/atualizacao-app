@@ -1,10 +1,13 @@
 // Códigos das séries no BCB (Banco Central do Brasil)
+// CDI: 4391 = CDI acumulado no mês (% a.m.) — mensal
+// SELIC: 4390 = SELIC acumulada no mês (% a.m.) — mensal
+// (séries 12 e 11 são diárias e retornariam centenas de registros)
 export const SERIES = {
-  IPCA: 433,
-  IGPM: 189,
-  INPC: 188,
-  CDI: 12,
-  SELIC: 11,
+  IPCA:  433,
+  IGPM:  189,
+  INPC:  188,
+  CDI:   4391,
+  SELIC: 4390,
 } as const
 
 export type Indice = keyof typeof SERIES
