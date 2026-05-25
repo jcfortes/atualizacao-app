@@ -232,30 +232,51 @@ export function Calculadora() {
               </div>
             </div>
 
-            {/* Tabela de índices */}
+            {/* Tabela de evolução mensal */}
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-bold text-gray-700">Série histórica — {indice}</p>
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <p className="text-sm font-bold text-gray-700">Planilha de atualização — {indice}</p>
+                <span className="text-xs text-gray-400">{resultado.periodos} meses</span>
               </div>
-              <div className="overflow-auto max-h-48">
-                <table className="w-full text-xs">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-semibold text-gray-600">Mês</th>
-                      <th className="px-4 py-2 text-right font-semibold text-gray-600">Taxa (%)</th>
+              <div className="overflow-auto max-h-72">
+                <table className="w-full text-xs min-w-[480px]">
+                  <thead className="sticky top-0">
+                    <tr className="bg-gray-900 text-white">
+                      <th className="px-3 py-2 text-left font-semibold">Mês</th>
+                      <th className="px-3 py-2 text-right font-semibold">Taxa (%)</th>
+                      <th className="px-3 py-2 text-right font-semibold">Fator Mensal</th>
+                      <th className="px-3 py-2 text-right font-semibold">Fator Acum.</th>
+                      <th className="px-3 py-2 text-right font-semibold">Valor Corrigido</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {resultado.dados.map((d, i) => (
-                      <tr key={i} className="border-t border-gray-50 hover:bg-gray-50">
-                        <td className="px-4 py-2 text-gray-700">{d.data}</td>
-                        <td className={`px-4 py-2 text-right font-mono font-semibold ${
-                          parseFloat(d.valor) >= 0 ? 'text-emerald-700' : 'text-red-600'
-                        }`}>
-                          {parseFloat(d.valor.replace(',', '.')).toFixed(4).replace('.', ',')}%
-                        </td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      let fatorAcum = 1
+                      return resultado.dados.map((d, i) => {
+                        const taxa = parseFloat(d.valor.replace(',', '.'))
+                        const fatorMensal = 1 + taxa / 100
+                        fatorAcum = fatorAcum * fatorMensal
+                        const valorCorrigido = resultado.valor_original * fatorAcum
+                        const isPos = taxa >= 0
+                        return (
+                          <tr key={i} className={`border-t border-gray-50 hover:bg-emerald-50/40 transition-colors ${i % 2 === 1 ? 'bg-gray-50/60' : ''}`}>
+                            <td className="px-3 py-2 text-gray-700 font-medium">{d.data}</td>
+                            <td className={`px-3 py-2 text-right font-mono font-semibold ${isPos ? 'text-emerald-700' : 'text-red-600'}`}>
+                              {taxa.toFixed(4).replace('.', ',')}%
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-gray-600">
+                              {fatorMensal.toFixed(6).replace('.', ',')}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-semibold text-gray-800">
+                              {fatorAcum.toFixed(6).replace('.', ',')}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono font-bold text-emerald-700">
+                              {moeda(valorCorrigido)}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    })()}
                   </tbody>
                 </table>
               </div>
