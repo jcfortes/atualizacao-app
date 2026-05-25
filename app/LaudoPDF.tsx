@@ -275,7 +275,7 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
 
         {/* Rodapé */}
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>matemático.com.br — Cálculos precisos. Decisões inteligentes.</Text>
+          <Text style={s.footerText}>matemático.com.br — Clareza Financeira</Text>
           <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
         </View>
 
