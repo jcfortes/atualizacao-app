@@ -99,14 +99,14 @@ export function Comparativo() {
     }
   }
 
-  // Meses do período calculado pelas datas (consistente para todos os índices)
-  function mesesDoPeriodo() {
+  // Meses solicitados (pelas datas) para comparar com os disponíveis
+  function mesesSolicitados() {
     if (!inicio || !fim) return 0
     const [ai, mi] = inicio.split('-').map(Number)
     const [af, mf] = fim.split('-').map(Number)
     return (af - ai) * 12 + (mf - mi) + 1
   }
-  const periodoMeses = mesesDoPeriodo()
+  const totalSolicitado = mesesSolicitados()
 
   // Ordena pelo maior valor corrigido
   const ordenados = resultado
@@ -181,8 +181,16 @@ export function Comparativo() {
                   )}
                   <div className="flex items-center justify-between mt-1">
                     <span className={`text-xs font-bold text-white px-2.5 py-1 rounded-full ${cor.badge}`}>{r.indice}</span>
-                    <span className="text-xs text-gray-500">{periodoMeses} meses</span>
+                    <span className={`text-xs font-medium ${r.periodos && r.periodos < totalSolicitado ? 'text-amber-600' : 'text-gray-500'}`}>
+                      {r.periodos ?? 0} meses
+                      {r.periodos && r.periodos < totalSolicitado ? ' ⚠️' : ''}
+                    </span>
                   </div>
+                  {r.periodos && r.periodos < totalSolicitado && (
+                    <p className="text-[10px] text-amber-600 bg-amber-50 rounded px-1.5 py-0.5 mt-1">
+                      Dados disponíveis até {r.periodos} de {totalSolicitado} meses
+                    </p>
+                  )}
 
                   {r.erro ? (
                     <p className="text-xs text-gray-400 mt-2">{r.erro}</p>
