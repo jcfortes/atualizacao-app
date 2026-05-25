@@ -64,6 +64,7 @@ export function Comparativo() {
   const [resultado, setResultado] = useState<ResultadoComparativo | null>(null)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
+  const [aviso, setAviso] = useState<{ minMeses: number; indicesIncompletos: string[] } | null>(null)
 
   function mesParaBCB(mes: string, ultimo = false) {
     if (!mes) return ''
@@ -75,23 +76,49 @@ export function Comparativo() {
     return `01/${m}/${ano}`
   }
 
-  async function comparar() {
+  // Converte quantidade de meses a partir do início para uma data YYYY-MM
+  function mesesParaFim(meses: number): string {
+    const [ai, mi] = inicio.split('-').map(Number)
+    const totalMes = (ai * 12 + mi - 1) + (meses - 1)
+    const novoAno = Math.floor(totalMes / 12)
+    const novoMes = (totalMes % 12) + 1
+    return `${novoAno}-${String(novoMes).padStart(2, '0')}`
+  }
+
+  async function buscar(fimOverride?: string) {
     const num = parseFloat(valor.replace(/\./g, '').replace(',', '.'))
     if (!num || !inicio || !fim) { setErro('Preencha todos os campos.'); return }
     if (inicio >= fim) { setErro('A data de início deve ser anterior à data final.'); return }
     setErro('')
+    setAviso(null)
     setLoading(true)
     setResultado(null)
     try {
+      const fimUsado = fimOverride ?? fim
       const params = new URLSearchParams({
         valor: String(num),
         inicio: mesParaBCB(inicio),
-        fim: mesParaBCB(fim, true),
+        fim: mesParaBCB(fimUsado, true),
       })
       const res = await fetch(`/api/comparar?${params}`)
-      const data = await res.json()
-      if (data.error) { setErro(data.error); return }
-      setResultado(data)
+      const data: ResultadoComparativo = await res.json()
+      if ((data as any).error) { setErro((data as any).error); return }
+
+      // Detecta se algum índice tem menos dados que outros
+      const periodos = data.resultados.filter(r => !r.erro).map(r => r.periodos ?? 0)
+      const minMeses = Math.min(...periodos)
+      const maxMeses = Math.max(...periodos)
+
+      if (minMeses < maxMeses && !fimOverride) {
+        // Há índices com dados incompletos — mostra aviso antes de exibir
+        const incompletos = data.resultados
+          .filter(r => !r.erro && (r.periodos ?? 0) < maxMeses)
+          .map(r => r.indice)
+        setAviso({ minMeses, indicesIncompletos: incompletos })
+        setResultado(data)
+      } else {
+        setResultado(data)
+      }
     } catch {
       setErro('Erro ao conectar com a API. Tente novamente.')
     } finally {
@@ -99,14 +126,12 @@ export function Comparativo() {
     }
   }
 
-  // Meses solicitados (pelas datas) para comparar com os disponíveis
-  function mesesSolicitados() {
-    if (!inicio || !fim) return 0
-    const [ai, mi] = inicio.split('-').map(Number)
-    const [af, mf] = fim.split('-').map(Number)
-    return (af - ai) * 12 + (mf - mi) + 1
+  async function recalcularComMesesDisponiveis() {
+    if (!aviso) return
+    const novoFim = mesesParaFim(aviso.minMeses)
+    setAviso(null)
+    await buscar(novoFim)
   }
-  const totalSolicitado = mesesSolicitados()
 
   // Ordena pelo maior valor corrigido
   const ordenados = resultado
@@ -143,13 +168,46 @@ export function Comparativo() {
         )}
 
         <button
-          onClick={comparar}
+          onClick={() => buscar()}
           disabled={loading}
           className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all hover:scale-105 disabled:hover:scale-100"
         >
           {loading ? 'Consultando todos os índices...' : 'Comparar índices →'}
         </button>
       </div>
+
+      {/* Banner de aviso — dados incompletos */}
+      {aviso && (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-5">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div className="flex-1">
+              <p className="font-bold text-amber-800 mb-1">Dados ainda não publicados para alguns índices</p>
+              <p className="text-sm text-amber-700 mb-3">
+                <strong>{aviso.indicesIncompletos.join(', ')}</strong> ainda não têm publicação para todo o período solicitado.
+                Os resultados acima foram calculados com períodos diferentes entre os índices, o que torna a comparação imprecisa.
+              </p>
+              <p className="text-sm text-amber-700 mb-4">
+                Deseja recalcular usando apenas os <strong>{aviso.minMeses} meses</strong> disponíveis em todos os índices?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={recalcularComMesesDisponiveis}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-5 py-2 rounded-xl text-sm transition-all"
+                >
+                  Recalcular com {aviso.minMeses} meses disponíveis →
+                </button>
+                <button
+                  onClick={() => setAviso(null)}
+                  className="bg-white border border-amber-300 text-amber-700 font-medium px-5 py-2 rounded-xl text-sm hover:bg-amber-50 transition-all"
+                >
+                  Manter assim
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
@@ -181,16 +239,8 @@ export function Comparativo() {
                   )}
                   <div className="flex items-center justify-between mt-1">
                     <span className={`text-xs font-bold text-white px-2.5 py-1 rounded-full ${cor.badge}`}>{r.indice}</span>
-                    <span className={`text-xs font-medium ${r.periodos && r.periodos < totalSolicitado ? 'text-amber-600' : 'text-gray-500'}`}>
-                      {r.periodos ?? 0} meses
-                      {r.periodos && r.periodos < totalSolicitado ? ' ⚠️' : ''}
-                    </span>
+                    <span className="text-xs text-gray-500">{r.periodos ?? 0} meses</span>
                   </div>
-                  {r.periodos && r.periodos < totalSolicitado && (
-                    <p className="text-[10px] text-amber-600 bg-amber-50 rounded px-1.5 py-0.5 mt-1">
-                      Dados disponíveis até {r.periodos} de {totalSolicitado} meses
-                    </p>
-                  )}
 
                   {r.erro ? (
                     <p className="text-xs text-gray-400 mt-2">{r.erro}</p>
