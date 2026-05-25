@@ -1,6 +1,6 @@
 'use client'
 
-import { Document, Page, Text, View, StyleSheet, pdf, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer'
 import { INDICE_LABEL, type Indice } from '@/lib/indices'
 
 // ── Estilos ──────────────────────────────────────────────────────────────────
@@ -14,8 +14,6 @@ const cor = {
   cinzaBorda: '#e5e7eb',
   preto: '#111827',
   branco: '#ffffff',
-  roxo: '#7c3aed',
-  roxoClaro: '#ede9fe',
 }
 
 const s = StyleSheet.create({
@@ -51,18 +49,30 @@ const s = StyleSheet.create({
   // Seção
   secaoTitulo: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: cor.cinza, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
 
-  // Tabela
+  // Tabela histórica com 5 colunas
   tabela: { borderWidth: 1, borderColor: cor.cinzaBorda, borderRadius: 6, overflow: 'hidden' },
-  tabelaHeader: { flexDirection: 'row', backgroundColor: '#f3f4f6', paddingHorizontal: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: cor.cinzaBorda },
-  tabelaHeaderCell: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: cor.cinza, textTransform: 'uppercase', letterSpacing: 0.3 },
-  tabelaRow: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: '#f3f4f6' },
-  tabelaRowAlt: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 5, backgroundColor: cor.cinzaClaro, borderBottomWidth: 0.5, borderBottomColor: '#f3f4f6' },
-  colData: { flex: 2, fontSize: 8, color: cor.preto },
-  colTaxa: { flex: 1, fontSize: 8, textAlign: 'right', fontFamily: 'Helvetica-Bold' },
+  tabelaHeader: { flexDirection: 'row', backgroundColor: '#1f2937', paddingHorizontal: 8, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: cor.cinzaBorda },
+  thMes:          { width: '14%', fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#ffffff' },
+  thTaxa:         { width: '14%', fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#ffffff', textAlign: 'right' },
+  thFatorMensal:  { width: '18%', fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#ffffff', textAlign: 'right' },
+  thFatorAcum:    { width: '18%', fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#ffffff', textAlign: 'right' },
+  thValor:        { width: '36%', fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#ffffff', textAlign: 'right' },
+
+  tabelaRow:    { flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: '#f3f4f6' },
+  tabelaRowAlt: { flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 5, backgroundColor: cor.cinzaClaro, borderBottomWidth: 0.5, borderBottomColor: '#f3f4f6' },
+
+  tdMes:         { width: '14%', fontSize: 7.5, color: cor.preto },
+  tdTaxa:        { width: '14%', fontSize: 7.5, textAlign: 'right', fontFamily: 'Helvetica-Bold' },
+  tdFatorMensal: { width: '18%', fontSize: 7.5, textAlign: 'right', color: '#374151' },
+  tdFatorAcum:   { width: '18%', fontSize: 7.5, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: cor.preto },
+  tdValor:       { width: '36%', fontSize: 7.5, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: cor.verde },
+
   taxaPos: { color: cor.verde },
   taxaNeg: { color: '#dc2626' },
 
-  // Rodapé
+  // Nota e rodapé
+  nota: { marginTop: 12, padding: 8, backgroundColor: '#fef9c3', borderRadius: 4, borderWidth: 0.5, borderColor: '#fde68a' },
+  notaText: { fontSize: 7, color: '#92400e' },
   footer: { position: 'absolute', bottom: 24, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 0.5, borderTopColor: cor.cinzaBorda, paddingTop: 8 },
   footerText: { fontSize: 7, color: cor.cinza },
 })
@@ -82,10 +92,21 @@ function fmtFator(v: number) {
 }
 
 function fmtMes(mesAno: string) {
-  // "01/2020" → "jan/2020"
   const meses = ['', 'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-  const [, mm, aaaa] = mesAno.split('/')
-  return `${meses[parseInt(mm)] ?? mm}/${aaaa}`
+  const partes = mesAno.split('/')
+  // Formato DD/MM/AAAA → pega índice 1 (mês) e 2 (ano)
+  if (partes.length === 3) {
+    const mm = partes[1]
+    const aaaa = partes[2]
+    return `${meses[parseInt(mm)] ?? mm}/${aaaa}`
+  }
+  // Formato MM/AAAA
+  if (partes.length === 2) {
+    const mm = partes[0]
+    const aaaa = partes[1]
+    return `${meses[parseInt(mm)] ?? mm}/${aaaa}`
+  }
+  return mesAno
 }
 
 function hoje() {
@@ -110,12 +131,38 @@ interface Props {
   fim: string
 }
 
+// ── Cálculo da série acumulada ────────────────────────────────────────────────
+
+interface LinhaSerie {
+  mes: string
+  taxa: number
+  fatorMensal: number
+  fatorAcumulado: number
+  valorCorrigido: number
+}
+
+function calcularSerie(dados: { data: string; valor: string }[], valorOriginal: number): LinhaSerie[] {
+  let fatorAcumulado = 1
+  return dados.map((d) => {
+    const taxa = parseFloat(d.valor.replace(',', '.'))
+    const fatorMensal = 1 + taxa / 100
+    fatorAcumulado = fatorAcumulado * fatorMensal
+    return {
+      mes: d.data,
+      taxa,
+      fatorMensal,
+      fatorAcumulado,
+      valorCorrigido: valorOriginal * fatorAcumulado,
+    }
+  })
+}
+
 // ── Documento PDF ─────────────────────────────────────────────────────────────
 
 function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
   const nomeFim = INDICE_LABEL[indice]
+  const serie = calcularSerie(resultado.dados, resultado.valor_original)
 
-  // Formata mês YYYY-MM para "MM/YYYY"
   function mesLabel(ym: string) {
     const [a, m] = ym.split('-')
     return `${m}/${a}`
@@ -126,7 +173,7 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
       <Page size="A4" style={s.page}>
 
         {/* Cabeçalho */}
-        <View style={s.header}>
+        <View style={s.header} fixed>
           <View>
             <View style={s.logoBox}>
               <Text style={s.logoM}>M</Text>
@@ -173,21 +220,35 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
           </View>
         </View>
 
-        {/* Tabela histórica */}
-        <Text style={s.secaoTitulo}>Série Histórica — {indice}</Text>
+        {/* Tabela histórica com valores calculados */}
+        <Text style={s.secaoTitulo}>Evolução mês a mês — {indice}</Text>
         <View style={s.tabela}>
-          <View style={s.tabelaHeader}>
-            <Text style={[s.tabelaHeaderCell, { flex: 2 }]}>Mês</Text>
-            <Text style={[s.tabelaHeaderCell, { flex: 1, textAlign: 'right' }]}>Taxa (%)</Text>
+          {/* Header */}
+          <View style={s.tabelaHeader} fixed>
+            <Text style={s.thMes}>Mês</Text>
+            <Text style={s.thTaxa}>Taxa (%)</Text>
+            <Text style={s.thFatorMensal}>Fator Mensal</Text>
+            <Text style={s.thFatorAcum}>Fator Acum.</Text>
+            <Text style={s.thValor}>Valor Corrigido</Text>
           </View>
-          {resultado.dados.map((d, i) => {
-            const taxa = parseFloat(d.valor.replace(',', '.'))
-            const isPos = taxa >= 0
+
+          {/* Linhas */}
+          {serie.map((linha, i) => {
+            const isPos = linha.taxa >= 0
             return (
               <View key={i} style={i % 2 === 0 ? s.tabelaRow : s.tabelaRowAlt}>
-                <Text style={s.colData}>{fmtMes(d.data)}</Text>
-                <Text style={[s.colTaxa, isPos ? s.taxaPos : s.taxaNeg]}>
-                  {taxa.toFixed(4).replace('.', ',')}%
+                <Text style={s.tdMes}>{fmtMes(linha.mes)}</Text>
+                <Text style={[s.tdTaxa, isPos ? s.taxaPos : s.taxaNeg]}>
+                  {linha.taxa.toFixed(4).replace('.', ',')}%
+                </Text>
+                <Text style={s.tdFatorMensal}>
+                  {linha.fatorMensal.toFixed(6).replace('.', ',')}
+                </Text>
+                <Text style={s.tdFatorAcum}>
+                  {linha.fatorAcumulado.toFixed(6).replace('.', ',')}
+                </Text>
+                <Text style={s.tdValor}>
+                  {moeda(linha.valorCorrigido)}
                 </Text>
               </View>
             )
@@ -195,9 +256,10 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
         </View>
 
         {/* Nota */}
-        <View style={{ marginTop: 12, padding: 8, backgroundColor: '#fef9c3', borderRadius: 4, borderWidth: 0.5, borderColor: '#fde68a' }}>
-          <Text style={{ fontSize: 7, color: '#92400e' }}>
+        <View style={s.nota}>
+          <Text style={s.notaText}>
             Fonte dos dados: Banco Central do Brasil (api.bcb.gov.br) · Os dados refletem os índices oficiais publicados pelo IBGE/FGV/BCB.
+            O valor corrigido de cada mês representa a aplicação do fator acumulado até aquele período sobre o valor original.
             Este laudo é gerado automaticamente e tem caráter informativo.
           </Text>
         </View>
