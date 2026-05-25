@@ -12,11 +12,8 @@ export default function Home() {
       {/* Nav */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <a href="https://matematico.com.br" className="flex items-center gap-2">
-            <span className="text-xl font-black">
-              <span className="text-gray-900">M</span><span className="text-emerald-500">.</span>
-            </span>
-            <span className="text-sm text-gray-400 hidden sm:block">atualização monetária</span>
+          <a href="https://matematico.com.br">
+            <img src="/logo-matematico.png" alt="Matemático" className="h-8 w-auto" />
           </a>
           <div className="flex items-center gap-4">
             <a href="https://matematico.com.br" className="text-sm text-gray-500 hover:text-gray-900 transition-colors hidden sm:block">
@@ -81,10 +78,7 @@ export default function Home() {
       {/* Rodapé */}
       <footer className="border-t border-gray-200 mt-12 py-8 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-400">
-          <div className="flex items-center gap-2">
-            <span className="font-black text-gray-900">M<span className="text-emerald-500">.</span></span>
-            <span>Matemático.com.br</span>
-          </div>
+          <img src="/logo-matematico.png" alt="Matemático" className="h-7 w-auto opacity-70" />
           <p>Dados: Banco Central do Brasil (BCB/SGS) · Atualização automática</p>
         </div>
       </footer>
