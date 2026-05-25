@@ -9,6 +9,8 @@ const BotaoExportarPDF = dynamic(
   { ssr: false }
 )
 
+import { gerarExcelAtualizacao } from '@/lib/exportExcel'
+
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -230,7 +232,10 @@ export function Calculadora() {
               <p className="text-sm font-bold text-gray-900">Planilha de atualização — {indice}</p>
               <p className="text-xs text-gray-400 mt-0.5">{resultado.periodos} meses · {INDICE_LABEL[indice]}</p>
             </div>
-            <BotaoExportarPDF resultado={resultado} indice={indice} inicio={inicio} fim={fim} />
+            <div className="flex gap-2">
+              <BotaoExportarPDF resultado={resultado} indice={indice} inicio={inicio} fim={fim} />
+              <BotaoExportarExcel resultado={resultado} indice={indice} inicio={inicio} fim={fim} />
+            </div>
           </div>
           <div className="overflow-auto">
             <table className="w-full text-sm">
@@ -287,5 +292,47 @@ export function Calculadora() {
         </div>
       )}
     </div>
+  )
+}
+
+// ── Botão Exportar Excel ──────────────────────────────────────────────────────
+
+interface ExcelProps {
+  resultado: Resultado
+  indice: Indice
+  inicio: string
+  fim: string
+}
+
+function BotaoExportarExcel({ resultado, indice, inicio, fim }: ExcelProps) {
+  const [loading, setLoading] = useState(false)
+
+  async function exportar() {
+    setLoading(true)
+    try {
+      const blob = await gerarExcelAtualizacao(resultado, indice, inicio, fim)
+      const [ai, mi] = inicio.split('-')
+      const [af, mf] = fim.split('-')
+      const nome = `Planilha_${indice}_${mi}-${ai}_${mf}-${af}.xlsx`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = nome
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={exportar}
+      disabled={loading}
+      className="flex items-center gap-2 bg-white border border-gray-200 hover:border-green-400 hover:bg-green-50 text-gray-700 hover:text-green-700 font-semibold px-5 py-2.5 rounded-xl transition-all text-sm shadow-sm disabled:opacity-50"
+    >
+      <span>📊</span>
+      {loading ? 'Gerando...' : 'Exportar Excel'}
+    </button>
   )
 }
