@@ -1,7 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { INDICE_LABEL, type Indice } from '@/lib/indices'
+
+const BotaoExportarPDF = dynamic(
+  () => import('./LaudoPDF').then((m) => m.BotaoExportarPDF),
+  { ssr: false }
+)
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -187,6 +193,16 @@ export function Calculadora() {
 
         {resultado && (
           <div className="space-y-4">
+            {/* Botão exportar */}
+            <div className="flex justify-end">
+              <BotaoExportarPDF
+                resultado={resultado}
+                indice={indice}
+                inicio={inicio}
+                fim={fim}
+              />
+            </div>
+
             {/* Valor corrigido */}
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200 rounded-2xl p-6">
               <p className="text-sm text-emerald-700 font-semibold mb-1">Valor corrigido</p>
