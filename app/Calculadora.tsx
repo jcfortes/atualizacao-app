@@ -244,8 +244,18 @@ export function Calculadora() {
                 </tr>
               </thead>
               <tbody>
+                {/* Linha zero — valor original */}
+                <tr className="bg-blue-50/60 border-t border-blue-100">
+                  <td className="px-6 py-3 font-semibold text-blue-800">Valor original (base)</td>
+                  <td className="px-6 py-3 text-right font-mono text-gray-400">—</td>
+                  <td className="px-6 py-3 text-right font-mono text-gray-400">1,000000</td>
+                  <td className="px-6 py-3 text-right font-mono text-gray-400">1,000000</td>
+                  <td className="px-6 py-3 text-right font-mono font-bold text-blue-700">
+                    {moeda(resultado.valor_original)}
+                  </td>
+                </tr>
                 {serie.map((linha, i) => (
-                  <tr key={i} className={`border-t border-gray-100 hover:bg-emerald-50/40 transition-colors ${i % 2 === 1 ? 'bg-gray-50/50' : ''}`}>
+                  <tr key={i} className={`border-t border-gray-100 hover:bg-emerald-50/40 transition-colors ${i % 2 === 0 ? 'bg-gray-50/50' : ''}`}>
                     <td className="px-6 py-3 text-gray-700 font-medium">{linha.mes}</td>
                     <td className={`px-6 py-3 text-right font-mono font-semibold ${linha.taxa >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                       {linha.taxa.toFixed(4).replace('.', ',')}%

@@ -232,7 +232,16 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
             <Text style={s.thValor}>Valor Corrigido</Text>
           </View>
 
-          {/* Linhas */}
+          {/* Linha zero — valor original */}
+          <View style={[s.tabelaRow, { backgroundColor: '#eff6ff' }]}>
+            <Text style={[s.tdMes, { color: '#1e40af', fontFamily: 'Helvetica-Bold' }]}>Valor original (base)</Text>
+            <Text style={[s.tdTaxa, { color: '#9ca3af' }]}>—</Text>
+            <Text style={[s.tdFatorMensal, { color: '#9ca3af' }]}>1,000000</Text>
+            <Text style={[s.tdFatorAcum, { color: '#9ca3af' }]}>1,000000</Text>
+            <Text style={[s.tdValor, { color: '#1d4ed8' }]}>{moeda(resultado.valor_original)}</Text>
+          </View>
+
+          {/* Linhas mensais */}
           {serie.map((linha, i) => {
             const isPos = linha.taxa >= 0
             return (
