@@ -1,6 +1,6 @@
 'use client'
 
-import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, pdf, Link } from '@react-pdf/renderer'
 import { INDICE_LABEL, type Indice } from '@/lib/indices'
 
 // ── Estilos ──────────────────────────────────────────────────────────────────
@@ -49,6 +49,18 @@ const s = StyleSheet.create({
   // Seção
   secaoTitulo: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: cor.cinza, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
 
+  // Demonstrativo de composição
+  demoBox:      { backgroundColor: '#ffffff', borderWidth: 1.5, borderColor: cor.verde, borderRadius: 8, padding: 14, marginBottom: 16 },
+  demoTitulo:   { fontSize: 8, fontFamily: 'Helvetica-Bold', color: cor.verde, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  demoLinha:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingVertical: 3 },
+  demoLabel:    { fontSize: 9, color: '#4b5563' },
+  demoLabelHint:{ fontSize: 7, color: '#9ca3af' },
+  demoValor:    { fontSize: 10, fontFamily: 'Helvetica-Bold', color: cor.preto },
+  demoValorOrg: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#ea580c' },
+  demoDivider:  { borderTopWidth: 1, borderTopColor: '#a7f3d0', marginVertical: 8 },
+  demoTotalLabel:{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#065f46', textTransform: 'uppercase', letterSpacing: 0.5 },
+  demoTotalValor:{ fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#065f46' },
+
   // Tabela histórica com 5 colunas
   tabela: { borderWidth: 1, borderColor: cor.cinzaBorda, borderRadius: 6, overflow: 'hidden' },
   tabelaHeader: { flexDirection: 'row', backgroundColor: '#1f2937', paddingHorizontal: 8, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: cor.cinzaBorda },
@@ -81,6 +93,13 @@ const s = StyleSheet.create({
 
 function moeda(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function moedaSemSimbolo(v: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(v ?? 0))
 }
 
 function pct(v: number) {
@@ -129,6 +148,8 @@ interface Props {
   indice: Indice
   inicio: string
   fim: string
+  labelCustom?: string
+  encargos?: import('@/lib/encargos').ResultadoEncargos | null
 }
 
 // ── Cálculo da série acumulada ────────────────────────────────────────────────
@@ -159,8 +180,8 @@ function calcularSerie(dados: { data: string; valor: string }[], valorOriginal: 
 
 // ── Documento PDF ─────────────────────────────────────────────────────────────
 
-function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
-  const nomeFim = INDICE_LABEL[indice]
+function LaudoDoc({ resultado, indice, inicio, fim, labelCustom, encargos }: Props) {
+  const nomeFim = labelCustom ?? INDICE_LABEL[indice]
   const serie = calcularSerie(resultado.dados, resultado.valor_original)
 
   function mesLabel(ym: string) {
@@ -175,11 +196,15 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
         {/* Cabeçalho */}
         <View style={s.header} fixed>
           <View>
-            <View style={s.logoBox}>
-              <Text style={s.logoM}>M</Text>
-              <Text style={s.logoPonto}>.</Text>
-            </View>
-            <Text style={s.logoSub}>matemático.com.br</Text>
+            <Link src="https://matematico.com.br" style={{ textDecoration: 'none' }}>
+              <View style={s.logoBox}>
+                <Text style={s.logoM}>M</Text>
+                <Text style={s.logoPonto}>.</Text>
+              </View>
+            </Link>
+            <Link src="https://matematico.com.br" style={{ textDecoration: 'none' }}>
+              <Text style={s.logoSub}>matemático.com.br</Text>
+            </Link>
           </View>
           <View style={s.headerRight}>
             <Text style={s.headerTipo}>Laudo de Atualização Monetária</Text>
@@ -220,6 +245,55 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
           </View>
         </View>
 
+        {/* Demonstrativo de composição (quando há encargos) */}
+        {encargos && encargos.temEncargos && (
+          <View style={s.demoBox}>
+            <Text style={s.demoTitulo}>Demonstrativo de Composição</Text>
+            <View style={s.demoLinha}>
+              <Text style={s.demoLabel}>Valor original</Text>
+              <Text style={s.demoValor}>{moeda(resultado.valor_original)}</Text>
+            </View>
+            <View style={s.demoLinha}>
+              <Text style={s.demoLabel}>Valor atualizado ({nomeFim})</Text>
+              <Text style={s.demoValor}>{moeda(encargos.valorAtualizado)}</Text>
+            </View>
+            {encargos.jurosMora > 0 && (
+              <View style={s.demoLinha}>
+                <Text style={s.demoLabel}>
+                  Juros de mora
+                  <Text style={s.demoLabelHint}> ({encargos.jurosMoraPct.toFixed(2).replace('.', ',')}% a.m. × {encargos.meses} {encargos.meses === 1 ? 'mês' : 'meses'})</Text>
+                </Text>
+                <Text style={s.demoValorOrg}>+ {moeda(encargos.jurosMora)}</Text>
+              </View>
+            )}
+            {encargos.multa > 0 && (
+              <View style={s.demoLinha}>
+                <Text style={s.demoLabel}>
+                  Multa
+                  <Text style={s.demoLabelHint}> ({encargos.multaPct.toFixed(2).replace('.', ',')}%)</Text>
+                </Text>
+                <Text style={s.demoValorOrg}>+ {moeda(encargos.multa)}</Text>
+              </View>
+            )}
+            {encargos.despesas > 0 && (
+              <View style={s.demoLinha}>
+                <Text style={s.demoLabel}>
+                  Outras despesas
+                  {encargos.despesasTipo === 'percentual' && (
+                    <Text style={s.demoLabelHint}> ({encargos.despesasEntrada.toFixed(2).replace('.', ',')}%)</Text>
+                  )}
+                </Text>
+                <Text style={s.demoValorOrg}>+ {moeda(encargos.despesas)}</Text>
+              </View>
+            )}
+            <View style={s.demoDivider} />
+            <View style={s.demoLinha}>
+              <Text style={s.demoTotalLabel}>Total devido</Text>
+              <Text style={s.demoTotalValor}>{moeda(encargos.total)}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Tabela histórica com valores calculados */}
         <Text style={s.secaoTitulo}>Evolução mês a mês — {indice}</Text>
         <View style={s.tabela}>
@@ -229,7 +303,7 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
             <Text style={s.thTaxa}>Taxa (%)</Text>
             <Text style={s.thFatorMensal}>Fator Mensal</Text>
             <Text style={s.thFatorAcum}>Fator Acum.</Text>
-            <Text style={s.thValor}>Valor Corrigido</Text>
+            <Text style={s.thValor}>Valor Corrigido (R$)</Text>
           </View>
 
           {/* Linha zero — valor original */}
@@ -238,7 +312,7 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
             <Text style={[s.tdTaxa, { color: '#9ca3af' }]}>—</Text>
             <Text style={[s.tdFatorMensal, { color: '#9ca3af' }]}>1,000000</Text>
             <Text style={[s.tdFatorAcum, { color: '#9ca3af' }]}>1,000000</Text>
-            <Text style={[s.tdValor, { color: '#1d4ed8' }]}>{moeda(resultado.valor_original)}</Text>
+            <Text style={[s.tdValor, { color: '#1d4ed8' }]}>{moedaSemSimbolo(resultado.valor_original)}</Text>
           </View>
 
           {/* Linhas mensais */}
@@ -257,7 +331,7 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
                   {linha.fatorAcumulado.toFixed(6).replace('.', ',')}
                 </Text>
                 <Text style={s.tdValor}>
-                  {moeda(linha.valorCorrigido)}
+                  {moedaSemSimbolo(linha.valorCorrigido)}
                 </Text>
               </View>
             )
@@ -275,7 +349,12 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
 
         {/* Rodapé */}
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>matemático.com.br — Clareza Financeira</Text>
+          <Text style={s.footerText}>
+            <Link src="https://matematico.com.br" style={{ color: cor.cinza, textDecoration: 'none' }}>
+              matemático.com.br
+            </Link>
+            {' — Clareza Financeira'}
+          </Text>
           <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
         </View>
 
@@ -286,15 +365,16 @@ function LaudoDoc({ resultado, indice, inicio, fim }: Props) {
 
 // ── Botão de exportar ─────────────────────────────────────────────────────────
 
-export function BotaoExportarPDF({ resultado, indice, inicio, fim }: Props) {
+export function BotaoExportarPDF({ resultado, indice, inicio, fim, labelCustom, encargos }: Props) {
   async function exportar() {
     const blob = await pdf(
-      <LaudoDoc resultado={resultado} indice={indice} inicio={inicio} fim={fim} />
+      <LaudoDoc resultado={resultado} indice={indice} inicio={inicio} fim={fim} labelCustom={labelCustom} encargos={encargos} />
     ).toBlob()
 
     const [ai, mi] = inicio.split('-')
     const [af, mf] = fim.split('-')
-    const nome = `Laudo_${indice}_${mi}-${ai}_${mf}-${af}.pdf`
+    const slug = labelCustom ? labelCustom.replace(/[^a-z0-9]/gi, '_') : indice
+    const nome = `Laudo_${slug}_${mi}-${ai}_${mf}-${af}.pdf`
 
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -307,7 +387,7 @@ export function BotaoExportarPDF({ resultado, indice, inicio, fim }: Props) {
   return (
     <button
       onClick={exportar}
-      className="flex items-center gap-2 bg-white border border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 text-gray-700 hover:text-emerald-700 font-semibold px-5 py-2.5 rounded-xl transition-all text-sm shadow-sm"
+      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-all text-sm shadow-sm"
     >
       <span>📄</span>
       Exportar Laudo PDF

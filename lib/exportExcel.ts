@@ -14,6 +14,13 @@ function moedaStr(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+function moedaSemSimbolo(v: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(v ?? 0))
+}
+
 function pctStr(v: number) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(4).replace('.', ',')}%`
 }
@@ -39,11 +46,14 @@ export async function gerarExcelAtualizacao(
   resultado: Resultado,
   indice: Indice,
   inicio: string,
-  fim: string
+  fim: string,
+  labelCustom?: string,
+  encargos?: import('./encargos').ResultadoEncargos | null,
 ): Promise<Blob> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'Matemático.com.br'
   wb.created = new Date()
+  const indiceLabel = labelCustom ?? INDICE_LABEL[indice]
 
   // ── Aba 1: Planilha de Atualização ──────────────────────────────────────────
   const ws = wb.addWorksheet('Planilha de Atualização', {
@@ -73,7 +83,7 @@ export async function gerarExcelAtualizacao(
     return `${m}/${a}`
   }
 
-  sub.value = `${INDICE_LABEL[indice]}  ·  Período: ${mesLabel(inicio)} a ${mesLabel(fim)}  ·  ${resultado.periodos} meses`
+  sub.value = `${indiceLabel}  ·  Período: ${mesLabel(inicio)} a ${mesLabel(fim)}  ·  ${resultado.periodos} meses`
   sub.font = { name: 'Arial', size: 9, color: { argb: 'FF6B7280' } }
   sub.alignment = { horizontal: 'left', vertical: 'middle' }
   ws.getRow(2).height = 18
@@ -152,7 +162,7 @@ export async function gerarExcelAtualizacao(
     { v: '—',                     al: 'center' as const, bold: false, color: '9CA3AF' },
     { v: '1,000000',              al: 'right' as const,  bold: false, color: '9CA3AF' },
     { v: '1,000000',              al: 'right' as const,  bold: false, color: '9CA3AF' },
-    { v: moedaStr(resultado.valor_original), al: 'right' as const, bold: true, color: COR.linhaZeroTxt },
+    { v: moedaSemSimbolo(resultado.valor_original), al: 'right' as const, bold: true, color: COR.linhaZeroTxt },
   ]
   cells0.forEach(({ v, al, bold, color }, i) => {
     const cell = row0.getCell(i + 1)
@@ -202,7 +212,7 @@ export async function gerarExcelAtualizacao(
 
     // Valor Corrigido
     const cValor = dataRow.getCell(5)
-    cValor.value = moedaStr(valorCorrigido)
+    cValor.value = moedaSemSimbolo(valorCorrigido)
     cValor.font = { name: 'Courier New', size: 9, bold: true, color: { argb: 'FF' + COR.verde } }
     cValor.alignment = { horizontal: 'right', vertical: 'middle' }
 
@@ -224,7 +234,7 @@ export async function gerarExcelAtualizacao(
     pctStr(resultado.variacao_pct),
     '—',
     resultado.fator.toFixed(6).replace('.', ','),
-    moedaStr(resultado.valor_corrigido),
+    moedaSemSimbolo(resultado.valor_corrigido),
   ]
   const totalAligns: ('left' | 'right' | 'center')[] = ['left', 'right', 'center', 'right', 'right']
   totais.forEach((v, i) => {
@@ -249,9 +259,9 @@ export async function gerarExcelAtualizacao(
   wsR.getColumn('A').width = 28
   wsR.getColumn('B').width = 28
 
-  const resumoItens = [
+  const resumoItens: Array<[string, string | number]> = [
     ['Índice', indice],
-    ['Descrição', INDICE_LABEL[indice]],
+    ['Descrição', indiceLabel],
     ['Período início', mesLabel(inicio)],
     ['Período fim', mesLabel(fim)],
     ['Quantidade de meses', resultado.periodos],
@@ -261,10 +271,35 @@ export async function gerarExcelAtualizacao(
     ['Diferença', moedaStr(resultado.valor_corrigido - resultado.valor_original)],
     ['Variação acumulada', pctStr(resultado.variacao_pct)],
     ['Fator de correção', resultado.fator.toFixed(6).replace('.', ',')],
-    ['', ''],
-    ['Data de emissão', new Date().toLocaleDateString('pt-BR')],
-    ['Fonte', 'Banco Central do Brasil'],
   ]
+
+  if (encargos && encargos.temEncargos) {
+    resumoItens.push(['', ''])
+    resumoItens.push(['ENCARGOS', ''])
+    if (encargos.jurosMora > 0) {
+      resumoItens.push([
+        `Juros de mora (${encargos.jurosMoraPct.toFixed(2).replace('.', ',')}% a.m. × ${encargos.meses} meses)`,
+        moedaStr(encargos.jurosMora),
+      ])
+    }
+    if (encargos.multa > 0) {
+      resumoItens.push([
+        `Multa (${encargos.multaPct.toFixed(2).replace('.', ',')}%)`,
+        moedaStr(encargos.multa),
+      ])
+    }
+    if (encargos.despesas > 0) {
+      const labelDesp = encargos.despesasTipo === 'percentual'
+        ? `Outras despesas (${encargos.despesasEntrada.toFixed(2).replace('.', ',')}%)`
+        : 'Outras despesas'
+      resumoItens.push([labelDesp, moedaStr(encargos.despesas)])
+    }
+    resumoItens.push(['Total devido', moedaStr(encargos.total)])
+  }
+
+  resumoItens.push(['', ''])
+  resumoItens.push(['Data de emissão', new Date().toLocaleDateString('pt-BR')])
+  resumoItens.push(['Fonte', 'Banco Central do Brasil'])
 
   wsR.mergeCells('A1:B1')
   const rTitulo = wsR.getCell('A1')
