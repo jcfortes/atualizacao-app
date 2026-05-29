@@ -1,36 +1,176 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistema de Atualização Monetária
 
-## Getting Started
+> **Parte da plataforma [Matemático.com.br](https://matematico.com.br)** — clareza financeira para profissionais e tomadores de crédito.
 
-First, run the development server:
+Aplicativo web para **atualização monetária** de valores por **índices oficiais** (IPCA, IGP-M, INPC, INCC, CDI, SELIC, TR, Poupança, FGTS, Dólar, Salário Mínimo) e **cestas customizadas** que combinam múltiplos índices com pesos.
+
+Permite **cálculo individual**, **comparativo entre vários índices/cestas** e aplicação de **encargos jurídicos** (juros de mora, multa, despesas) sobre o valor corrigido.
+
+🌐 **Produção:** https://atualizacao.matematico.com.br
+
+---
+
+## 🎯 Para quem é
+
+- **Advogados** que precisam atualizar dívidas, alimentos, indenizações, contratos
+- **Contadores** que aplicam correções de contratos, débitos e ativos
+- **Consultores financeiros** que calculam rendimentos retroativos
+- **Pessoas físicas** que querem entender o valor atualizado de um bem ou dívida
+
+## ⚡ Funcionalidades
+
+### Cálculo individual
+- 12 índices oficiais com dados do **Banco Central do Brasil** (SGS)
+- Período flexível (mês a mês)
+- **Valor original** + atualização → **valor corrigido**, variação acumulada e fator
+- Tabela mês a mês com taxa, fator mensal, fator acumulado e valor corrigido
+
+### Encargos jurídicos (opcionais)
+Aplicados ao valor já atualizado:
+- **Juros de mora** (% a.m., juros simples — padrão jurídico brasileiro)
+- **Multa** (%)
+- **Outras despesas**: valor fixo em R$ **OU** percentual sobre (VA + juros + multa)
+  - Ex.: honorários advocatícios geralmente são percentuais
+- **Demonstrativo de composição** completo: valor original → atualizado → juros → multa → despesas → total devido
+- **Auto-cálculo** em tempo real ao digitar (debounce 500ms)
+
+### Cestas customizadas
+- Crie cestas combinando 2+ índices com pesos personalizados
+  - Ex.: 60% IPCA + 40% IGP-M
+- Cesta é tratada como um "índice" próprio em todos os cálculos
+- Editor visual com validação de pesos
+
+### Comparar Índices
+Dois modos automáticos:
+- **Sem valor**: mostra apenas variações dos índices no período (qual rendeu mais)
+- **Com valor**: aplica correção a cada índice + encargos opcionais
+  - Coluna "Total Devido" com encargos aplicados a cada cenário
+  - Ordenação pelo maior total
+
+Recursos:
+- Pré-seleção via URL (vinda do botão "Comparar com outros índices" da Calculadora)
+- Filtro de assuntos
+- Detecção de períodos incompletos com sugestão de recálculo até o último mês com dados em todos
+
+### Página por índice
+Cada índice tem sua própria página com:
+- Definição, origem, periodicidade, fórmula
+- Gráfico histórico
+- Tabela de valores mês a mês com filtro de período
+
+### Evolução
+Gráficos comparativos de múltiplos índices/cestas ao longo do tempo.
+
+### Exportação
+- **PDF** (Laudo profissional): KPIs, demonstrativo de composição (se houver encargos), tabela mês a mês
+- **Excel**: planilha estruturada com 2 abas (Atualização + Resumo)
+
+### Persistência inteligente
+Valor, período e índice ficam salvos no `localStorage` por 7 dias — usuário não precisa redigitar ao navegar entre Calculadora ↔ Comparativo.
+
+---
+
+## 🧱 Stack técnico
+
+| Camada | Tecnologia |
+|---|---|
+| Framework | **Next.js 16** (App Router) |
+| Linguagem | **TypeScript** (strict) |
+| Banco | **Supabase** (PostgreSQL + RLS + Auth) |
+| Fonte de dados | **Banco Central do Brasil** (API SGS) |
+| UI | **Tailwind CSS** + componentes customizados |
+| Gráficos | **Recharts** |
+| PDF | **@react-pdf/renderer** |
+| Excel | **ExcelJS** |
+| Deploy | **Vercel** |
+
+### Arquitetura
+- **App Router** com Server Components por padrão
+- **API routes** atuam como proxy para o BCB com cache (`fetch` revalidate)
+- **RLS** para cestas customizadas (usuário só vê as suas)
+- **Encargos calculados localmente** (motor puro em `lib/encargos.ts`)
+
+---
+
+## 📂 Estrutura
+
+```
+app/
+├── (app)/                       # Páginas autenticadas
+│   ├── calculadora/             # Página de cálculo individual
+│   ├── comparativo/             # Comparar Índices
+│   ├── evolucao/                # Gráficos históricos
+│   ├── indices/[indice]/        # Página por índice (info + histórico)
+│   └── cestas/                  # CRUD de cestas customizadas
+├── api/
+│   ├── corrigir/                # Cálculo individual (chama BCB)
+│   ├── comparar/                # Cálculo comparativo
+│   ├── serie/                   # Série histórica de um índice
+│   └── cestas/                  # CRUD + cálculo de cesta
+├── Calculadora.tsx              # Componente da Calculadora (compartilhado)
+├── Comparativo.tsx              # Componente do Comparativo
+└── LaudoPDF.tsx                 # Geração do PDF
+
+lib/
+├── encargos.ts                  # Motor de encargos (juros, multa, despesas)
+├── indices.ts                   # Fetch ao BCB + códigos das séries
+├── indiceInfo.ts                # Metadados de cada índice
+├── cestas.ts                    # Cálculo de cesta
+├── useStoredState.ts            # Persistência em localStorage (TTL 7 dias)
+├── formatters.ts                # Moeda, data, %, sem símbolo
+├── exportExcel.ts
+└── exportHistorico.ts           # Export por índice
+
+components/
+├── Sidebar.tsx
+└── MobileNav.tsx
+
+sql/                             # Migrations
+└── cestas_indices.sql
+```
+
+---
+
+## 🚀 Como rodar localmente
+
+```bash
+git clone https://github.com/jcfortes/atualizacao-app.git
+cd atualizacao-app
+npm install
+```
+
+### Variáveis de ambiente
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
+SUPABASE_SERVICE_ROLE_KEY=xxx
+```
+
+### Banco
+
+Rode `sql/cestas_indices.sql` no Supabase.
+
+### Dev
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> **Sem chave do BCB**: a API SGS é pública e gratuita, não precisa autenticação.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 📜 Padrões da plataforma
 
-To learn more about Next.js, take a look at the following resources:
+Antes de mexer em UI, leia **[../PADROES-PLATAFORMA.md](../PADROES-PLATAFORMA.md)**.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🤖 Construído com Claude Code
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Veja [CLAUDE.md](./CLAUDE.md).
 
-## Deploy on Vercel
+## 📄 Licença
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Proprietário — © José Carlos Fortes / Fortes Tecnologia
