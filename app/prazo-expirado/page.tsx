@@ -34,6 +34,14 @@ export default async function PrazoExpiradoPage() {
   // Se NÃO está expirado, manda de volta pro app
   if (!v.expirado) redirect('/dashboard')
 
+  // Dispara notificação pra admins (idempotente, ignora duplicados nas últimas 24h)
+  // Fire-and-forget: não bloqueia a renderização da página
+  fetch('https://matematico.com.br/api/notify/prazo-expirado', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: user.id }),
+  }).catch((err) => console.error('[notify] falhou:', err))
+
   const diasAtrasados = v.diasRestantes !== null ? Math.abs(v.diasRestantes) : 0
 
   async function handleSair() {
