@@ -54,12 +54,19 @@ export function AppSwitcher() {
 
       {aberto && (
         <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-50">
-          <div className="px-4 py-3 border-b bg-slate-50">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <a
+            href="https://matematico.com.br"
+            onClick={() => setAberto(false)}
+            className="block px-4 py-3 border-b bg-slate-50 hover:bg-emerald-50 transition-colors group"
+            title="Ir para a página inicial da plataforma"
+          >
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 group-hover:text-emerald-800 flex items-center gap-1.5">
+              <Home className="h-3 w-3" />
               Plataforma Matemático
+              <ExternalLink className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">Trocar de aplicativo</p>
-          </div>
+            <p className="text-xs text-slate-500 mt-0.5">Trocar de aplicativo · Clique pra voltar à LP</p>
+          </a>
 
           <ul className="py-1">
             {APPS.map((app) => (
