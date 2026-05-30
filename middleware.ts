@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { verificarPrazo } from '@/lib/prazo'
 
 const cookieDomain = '.matematico.com.br'
 
@@ -44,6 +45,29 @@ export async function middleware(request: NextRequest) {
     const url = new URL('https://matematico.com.br/auth')
     url.searchParams.set('redirect', `https://atualizacao.matematico.com.br${pathname}`)
     return NextResponse.redirect(url)
+  }
+
+  // ── Verificação de prazo (só pra usuários autenticados em rotas protegidas) ──
+  if (user && !isPublicRoute && pathname !== '/prazo-expirado') {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('prazo_tipo, prazo_quantidade, prazo_inicio')
+      .eq('id', user.id)
+      .single()
+
+    if (profile) {
+      const v = verificarPrazo({
+        prazo_tipo: profile.prazo_tipo ?? null,
+        prazo_quantidade: profile.prazo_quantidade ?? null,
+        prazo_inicio: profile.prazo_inicio ?? null,
+      })
+
+      if (v.expirado) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/prazo-expirado'
+        return NextResponse.redirect(url)
+      }
+    }
   }
 
   return supabaseResponse
