@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/Sidebar'
 import { MobileNav } from '@/components/MobileNav'
+import { AppSwitcher } from '@/components/AppSwitcher'
 import { createClient } from '@/lib/supabase/server'
 
 interface CestaResumo {
@@ -34,7 +35,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             className="h-20 w-auto"
           />
         </a>
-        <MobileNav cestas={cestas} />
+        <div className="flex items-center gap-2">
+          <AppSwitcher />
+          <MobileNav cestas={cestas} />
+        </div>
       </header>
 
       {/* Linha 2: Nome do app (fixo) */}
